@@ -3,9 +3,10 @@
 #ifndef WHY_DBMS_PROJECT1_H_
 #define WHY_DBMS_PROJECT1_H_
 #include <string>
+#include <sstream>
+#include <fstream>
 #include <vector>
 #include <variant>
-#include <utility>
 #include <optional>
 #include <tuple>
 #include <unordered_map>
@@ -28,9 +29,15 @@ public:
     Column(std::string name, int max_length)
         : name_(name), max_length_(max_length) {}
 
-    void InsertData(T data) {
+    // parses string into its own data type
+    void InsertData(std::string raw_data) {
+        std::istringstream is(raw_data);
+        Type data;
+        is >> data;
         datas_.push_back(data);
     }
+
+    int GetMaxLength() { return max_length_; }
 };
 
 template<typename... Types>
@@ -42,11 +49,33 @@ protected:
     Table(std::string table_name, std::tuple<Column<Types>...> columns)
         : table_name_(table_name), columns_(columns) {}
 
-    using DataType = std::variant<Types...>;
+    std::vector<std::string> Parse(std::string raw_data) {
+        std::vector<std::string> record_data;
+        int offset = 0;
+        std::apply([raw_data, &record_data, offset](auto&& column) mutable {
+            int col_max_len = column.GetMaxLength();
+            record_data.push_back(raw_data.substr(offset, col_max_len));
+            offset = offset + col_max_len + 1;
+        }, &columns_);
+    }
 
-    void InsertRecord(std::vector<DataType> record) {
-        for (int i = 0; i < record.size(); i++) {
-            columns_[i].InsertData(record[i]);
+    void InsertRecord(std::vector<std::string> data) {
+        int idx = 0;
+        std::apply([data, idx](auto&& column) mutable {
+            column.InsertData(data[idx]);
+            idx++;
+        }, &columns_);
+    }
+
+public:
+    void Load(std::ifstream& input_stream) {
+        std::string line;
+        getline(input_stream, line);
+        getline(input_stream, line);
+ 
+        while(getline(input_stream, line)) {
+            int offset = 0;
+            InsertRecord(Parse(line));
         }
     }
 };
