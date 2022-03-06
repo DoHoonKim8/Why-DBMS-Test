@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -W -O2 -std=c++11
+CFLAGS = -W -O2 -std=c++17
 TARGET = project1
 
 $(TARGET): project1.o
